@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeraFileShare Video Downloader</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <style>
+    .loader {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 8px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #videoPlayer {
+      max-height: 60vh;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center">
+  <div class="max-w-xl mx-auto w-full p-6 bg-white rounded-lg shadow-md">
+    <div class="text-center mb-6">
+      <h1 class="text-2xl font-bold text-blue-600">TeraFileShare Video Downloader</h1>
+      <p class="text-gray-500 mt-1">Paste your terafileshare.com link below</p>
+    </div>
+    
+    <div class="flex mb-4 gap-2">
+      <input id="linkInput" type="text" placeholder="https://terafileshare.com/..." 
+             class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+      <button id="fetchBtn" 
+              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200 whitespace-nowrap">
+        Get Video
+      </button>
+    </div>
+    
+    <div id="statusArea" class="hidden mb-4">
+      <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded relative" role="alert">
+        <span class="block sm:inline" id="statusText">Processing your request...</span>
+      </div>
+    </div>
+
+    <div id="videoSection" class="hidden mt-4">
+      <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <video id="videoPlayer" class="w-full rounded-lg mb-4 shadow" controls></video>
+        <div class="flex gap-2">
+          <a id="downloadBtn" href="#" download 
+             class="flex-1 bg-green-600 hover:bg-green-700 text-white text-center font-medium py-2 px-4 rounded-lg transition duration-200">
+            Download Video
+          </a>
+          <button id="copyBtn" 
+                  class="flex-1 bg-gray-600 hover:bg-gray-700 text-white text-center font-medium py-2 px-4 rounded-lg transition duration-200">
+            Copy URL
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="errorMsg" class="hidden mt-4">
+      <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded relative" role="alert">
+        <span class="block sm:inline" id="errorText"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const linkInput = document.getElementById("linkInput");
+      const fetchBtn = document.getElementById("fetchBtn");
+      const videoSection = document.getElementById("videoSection");
+      const videoPlayer = document.getElementById("videoPlayer");
+      const downloadBtn = document.getElementById("downloadBtn");
+      const copyBtn = document.getElementById("copyBtn");
+      const errorMsg = document.getElementById("errorMsg");
+      const errorText = document.getElementById("errorText");
+      const statusArea = document.getElementById("statusArea");
+      const statusText = document.getElementById("statusText");
+
+      // Handle fetch button click
+      fetchBtn.addEventListener("click", fetchVideo);
+
+      // Handle Enter key in input field
+      linkInput.addEventListener("keypress", function(e) {
+        if (e.key === "Enter") fetchVideo();
+      });
+
+      // Handle copy button click
+      copyBtn.addEventListener("click", function() {
+        navigator.clipboard.writeText(videoPlayer.src)
+          .then(() => {
+            statusText.textContent = "Video URL copied to clipboard!";
+            statusArea.classList.remove("hidden");
+            setTimeout(() => statusArea.classList.add("hidden"), 3000);
+          });
+      });
+
+      async function fetchVideo() {
+        const link = linkInput.value.trim();
+        
+        // Reset UI
+        errorMsg.classList.add("hidden");
+        videoSection.classList.add("hidden");
+        statusArea.classList.remove("hidden");
+        statusText.textContent = "Processing your request...";
+        fetchBtn.disabled = true;
+        fetchBtn.innerHTML = '<span class="loader"></span>';
+
+        try {
+          const response = await fetch("/fetch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ link })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            videoPlayer.src = data.videoUrl;
+            downloadBtn.href = data.videoUrl;
+            videoSection.classList.remove("hidden");
+            statusArea.classList.add("hidden");
+          } else {
+            showError(data.error || "Failed to fetch video. Please check the link and try again.");
+          }
+        } catch (error) {
+          showError("An error occurred. Please try again later.");
+        } finally {
+          fetchBtn.disabled = false;
+          fetchBtn.textContent = "Get Video";
+        }
+      }
+
+      function showError(message) {
+        errorText.textContent = message;
+        errorMsg.classList.remove("hidden");
+        statusArea.classList.add("hidden");
+      }
+    });
+  </script>
+</body>
+</html>
